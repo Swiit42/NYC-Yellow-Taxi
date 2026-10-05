@@ -1,0 +1,8 @@
+# Chargement d'un mois et test de connexion
+requests>=2.32
+snowflake-connector-python>=3.12
+cryptography>=42
+
+# Exploration des fichiers pour la fiche source (explorer_source.py)
+duckdb>=1.1
+pyarrow>=17
