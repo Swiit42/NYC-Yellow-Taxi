@@ -2,8 +2,10 @@
 -- 04_perimetre_transformer.sql — Prouver que le rôle des outils (TRANSFORMER)
 -- ne peut pas sortir de son périmètre.
 --
--- À lancer dans Snowsight (Run All). Chaque tentative interdite est attrapée :
--- le bloc renvoie une ligne par test, « refusé » attendu partout.
+-- À lancer dans Snowsight, instruction par instruction (Ctrl+Entrée), pour voir
+-- chaque résultat : avec Run All, Snowsight n'affiche que le dernier. Chaque
+-- tentative interdite est attrapée : le bloc 2 renvoie une ligne par test,
+-- « refusé » attendu partout.
 --
 -- USE SECONDARY ROLES NONE est indispensable : dans Snowsight, votre utilisateur
 -- garde par défaut ses autres rôles (ACCOUNTADMIN…) en rôles secondaires, et
@@ -57,7 +59,10 @@ BEGIN
 END;
 $$;
 
--- 3. Prendre un rôle d'administration : doit échouer
---    (Insufficient privileges / Requested role is not assigned). Dernière
---    instruction du fichier, car Run All s'arrête à la première erreur.
-USE ROLE ACCOUNTADMIN;
+-- 3. Le rôle ne peut pas devenir administrateur : aucun rôle ne lui est donné
+--    (la liste ci-dessous est vide). On ne le teste pas par USE ROLE ACCOUNTADMIN :
+--    USE ROLE vérifie les rôles de l'UTILISATEUR connecté, pas ceux du rôle
+--    courant, et votre utilisateur humain possède ACCOUNTADMIN.
+-- Une seule instruction (->> enchaîne le SHOW et le filtre) : résultat vide attendu.
+SHOW GRANTS TO ROLE TRANSFORMER
+  ->> SELECT "privilege", "granted_on", "name" FROM $1 WHERE "granted_on" = 'ROLE';
