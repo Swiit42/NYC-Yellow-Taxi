@@ -21,6 +21,15 @@ Un DAG Airflow, `nyc_taxi_mensuel`, traite un mois par exécution : janvier, fé
 
 Ces chiffres sont ceux attendus par le brief. Relancer un mois ne les change pas.
 
+## Le rôle de chaque outil
+
+| Outil | Rôle dans le schéma |
+|---|---|
+| **Fichiers TLC** (site public) | la source : un fichier Parquet par mois, plus la liste des zones en CSV |
+| **Script Python** (`ingestion/`) | charger un mois à la main : téléchargement, `PUT` sur le stage, `COPY INTO` ; il sert à mettre au point le chargement avant de l'automatiser |
+| **Snowflake** | l'entrepôt : il stocke les quatre couches et exécute tout le SQL, sur un warehouse XS |
+| **Airflow** (Astro CLI, Docker) | l'orchestrateur : chaque mois, il charge le fichier, lance les fichiers SQL dans l'ordre et arrête la chaîne si un contrôle échoue ; il ne calcule rien lui-même |
+
 ## Les quatre couches
 
 | Couche | Contenu | Écrite par |
@@ -32,7 +41,7 @@ Ces chiffres sont ceux attendus par le brief. Relancer un mois ne les change pas
 
 ## Le DAG
 
-![Vue Graph du DAG](docs/captures/dag_graph.png)
+![Vue Graph du DAG](docs/captures/02_graphe_dag.png)
 
 ```
 nom_du_fichier → verifier_disponibilite → telecharger_et_deposer → copier_dans_la_table
@@ -111,6 +120,9 @@ astro dev start                                             # interface : http:/
 
 | Sujet | Ce qui s'est passé | Choix retenu |
 |---|---|---|
+| Stage interne | `COPY INTO` ne lit que des fichiers déjà dans un stage. Un stage interne évite de créer un compte de stockage cloud (S3, Azure) et ses identifiants. Snowflake y garde l'historique de chargement de chaque fichier, ce qui rend le rechargement sans doublon. | `TLC_STAGE`, fichiers déposés à la racine |
+| Warehouse XS | 11 millions de lignes par trimestre tiennent sur la plus petite taille (1 crédit par heure au plus). Le warehouse s'arrête 60 s après la dernière requête et redémarre tout seul. | `XSMALL`, `AUTO_SUSPEND = 60`, `AUTO_RESUME = TRUE` |
+| Rôle des outils | Le pipeline n'a besoin que de créer et de remplir ses propres tables. Avec `ACCOUNTADMIN`, une erreur ou une clé volée toucheraient tout le compte. | `TRANSFORMER` : droits limités à la base `NYC_TAXI`, aucun droit sur le compte |
 | Dates Parquet | Au premier chargement, les dates étaient en l'an 55 000 000 : les fichiers stockent des microsecondes, que Snowflake lit mal par défaut. | `USE_LOGICAL_TYPE = TRUE` dans le format `PARQUET_FF` |
 | Types RAW | Une colonne peut être entière un mois et décimale le suivant, et `NUMBER` sans décimales arrondit les montants. | `NUMBER` pour les codes et les compteurs, `FLOAT` pour les montants et les distances |
 | `_source_file` | Le contrat exige le nom nu du fichier. | Dépôt à la racine du stage, avec `AUTO_COMPRESS = FALSE` pour éviter le suffixe `.gz` |
@@ -125,18 +137,24 @@ astro dev start                                             # interface : http:/
 | Vérification | Fichier | Résultat |
 |---|---|---|
 | Comptage des anomalies de janvier à la main | [snowflake/03_comptage_anomalies.sql](snowflake/03_comptage_anomalies.sql) | 223 889 trajets anormaux, comme dans `MART_DATA_QUALITY`. Les comptes par règle diffèrent, car le rapport ne retient que la première règle enfreinte. |
-| Périmètre du rôle des outils | [snowflake/04_perimetre_transformer.sql](snowflake/04_perimetre_transformer.sql) | à compléter |
-| Crédits consommés | [snowflake/05_credits_consommes.sql](snowflake/05_credits_consommes.sql) | à compléter |
+| Périmètre du rôle des outils | [snowflake/04_perimetre_transformer.sql](snowflake/04_perimetre_transformer.sql) | toutes les tentatives hors périmètre sont refusées (capture 5) |
+| Crédits consommés | [snowflake/05_credits_consommes.sql](snowflake/05_credits_consommes.sql) | voir la capture 6 |
 | Rejeu de février | relance complète du run | nombre de lignes identique dans les 9 tables |
 
 ## Captures d'écran
 
-À placer dans `docs/captures/` :
+| Capture | Ce qu'elle montre |
+|---|---|
+| ![](docs/captures/01_runs_reussis.png) | les trois exécutions réussies : janvier, février, mars |
+| ![](docs/captures/02_graphe_dag.png) | le graphe du DAG, groupes dépliés |
+| ![](docs/captures/03_controle_en_echec.png) | un contrôle en échec, et les tâches suivantes en `upstream_failed` |
+| ![](docs/captures/04_historique_chargement.png) | l'historique de chargement Snowflake (`COPY_HISTORY`) |
+| ![](docs/captures/05_droits_role.png) | les droits du rôle des outils, et les accès refusés hors de son périmètre |
+| ![](docs/captures/06_credits.png) | le suivi des crédits consommés |
 
-- `dag_graph.png` : vue Graph du DAG, avec les groupes dépliés ;
-- `runs_reussis.png` : les trois exécutions réussies (janvier, février, mars) ;
-- `controle_en_echec.png` : un contrôle en échec et les tâches suivantes en `upstream_failed` ;
-- `snowsight_tables.png` : les tables de `MARTS` et leurs nombres de lignes.
+## Auteur
+
+Sacha Tymoshenko, Simplon, formation Data Engineer. Brief réalisé seul, sans binôme.
 
 ## Contenu du dépôt
 
