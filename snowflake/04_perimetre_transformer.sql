@@ -2,10 +2,12 @@
 -- 04_perimetre_transformer.sql — Prouver que le rôle des outils (TRANSFORMER)
 -- ne peut pas sortir de son périmètre.
 --
--- À lancer dans Snowsight, instruction par instruction (Ctrl+Entrée), pour voir
--- chaque résultat : avec Run All, Snowsight n'affiche que le dernier. Chaque
--- tentative interdite est attrapée : le bloc 2 renvoie une ligne par test,
--- « refusé » attendu partout.
+-- À lancer avec l'utilisateur de service, qui n'a que le rôle TRANSFORMER :
+--     python ingestion/executer_sql.py snowflake/04_perimetre_transformer.sql
+-- (Dans Snowsight, un notebook ou un utilisateur humain peut rester sur ses
+-- rôles d'administration : le garde-fou du bloc 2 arrête alors les tests.)
+-- Chaque tentative interdite est attrapée : le bloc 2 renvoie une ligne par
+-- test, « refusé » attendu partout. Résultat obtenu : 8 refus sur 8.
 --
 -- USE SECONDARY ROLES NONE est indispensable : dans Snowsight, votre utilisateur
 -- garde par défaut ses autres rôles (ACCOUNTADMIN…) en rôles secondaires, et
@@ -23,6 +25,16 @@ EXECUTE IMMEDIATE $$
 DECLARE
     resultat VARCHAR DEFAULT '';
 BEGIN
+    -- Garde-fou : lancé avec un rôle d'administration, chaque test RÉUSSIRAIT et
+    -- modifierait réellement le compte. On refuse de tourner si le rôle actif
+    -- n'est pas TRANSFORMER ou si un rôle secondaire est actif.
+    IF (CURRENT_ROLE() <> 'TRANSFORMER'
+        OR PARSE_JSON(CURRENT_SECONDARY_ROLES()):roles::VARCHAR <> '') THEN
+        RETURN 'ARRÊT : rôle actif ' || CURRENT_ROLE() || ', rôles secondaires '
+               || CURRENT_SECONDARY_ROLES()
+               || '. Lancer d''abord USE ROLE TRANSFORMER; USE SECONDARY ROLES NONE;';
+    END IF;
+
     BEGIN CREATE DATABASE TEST_INTRUS;
           resultat := resultat || 'AUTORISÉ !! créer une base\n';
     EXCEPTION WHEN OTHER THEN resultat := resultat || 'refusé : créer une base\n'; END;

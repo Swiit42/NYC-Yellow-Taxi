@@ -137,7 +137,7 @@ astro dev start                                             # interface : http:/
 | Vérification | Fichier | Résultat |
 |---|---|---|
 | Comptage des anomalies de janvier à la main | [snowflake/03_comptage_anomalies.sql](snowflake/03_comptage_anomalies.sql) | 223 889 trajets anormaux, comme dans `MART_DATA_QUALITY`. Les comptes par règle diffèrent, car le rapport ne retient que la première règle enfreinte. |
-| Périmètre du rôle des outils | [snowflake/04_perimetre_transformer.sql](snowflake/04_perimetre_transformer.sql) | toutes les tentatives hors périmètre sont refusées (capture 5) |
+| Périmètre du rôle des outils | [snowflake/04_perimetre_transformer.sql](snowflake/04_perimetre_transformer.sql) | 8 tentatives hors périmètre sur 8 refusées pour `AIRFLOW_SVC`, aucun rôle donné à `TRANSFORMER` (captures 5) |
 | Crédits consommés | [snowflake/05_credits_consommes.sql](snowflake/05_credits_consommes.sql) | voir la capture 6 |
 | Rejeu de février | relance complète du run | nombre de lignes identique dans les 9 tables |
 
