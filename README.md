@@ -138,7 +138,7 @@ astro dev start                                             # interface : http:/
 |---|---|---|
 | Comptage des anomalies de janvier à la main | [snowflake/03_comptage_anomalies.sql](snowflake/03_comptage_anomalies.sql) | 223 889 trajets anormaux, comme dans `MART_DATA_QUALITY`. Les comptes par règle diffèrent, car le rapport ne retient que la première règle enfreinte. |
 | Périmètre du rôle des outils | [snowflake/04_perimetre_transformer.sql](snowflake/04_perimetre_transformer.sql) | 8 tentatives hors périmètre sur 8 refusées pour `AIRFLOW_SVC`, aucun rôle donné à `TRANSFORMER` (captures 5) |
-| Crédits consommés | [snowflake/05_credits_consommes.sql](snowflake/05_credits_consommes.sql) | voir la capture 6 |
+| Crédits consommés | [snowflake/05_credits_consommes.sql](snowflake/05_credits_consommes.sql) | 0,54 crédit au total : 0,02 le 5 octobre, 0,18 le 6 octobre (chargement des trois mois), 0,35 le 2 novembre (transformations, rejeux et tests ; le warehouse a été passé par erreur en Medium pendant un test, puis remis en XS) (capture 6) |
 | Rejeu de février | relance complète du run | nombre de lignes identique dans les 9 tables |
 
 ## Captures d'écran
@@ -146,7 +146,7 @@ astro dev start                                             # interface : http:/
 | Capture | Ce qu'elle montre |
 |---|---|
 | ![](docs/captures/01_runs_reussis.png) | les trois exécutions réussies : janvier, février, mars |
-| ![](docs/captures/02_graphe_dag.png) | le graphe du DAG, groupes dépliés |
+| ![](docs/captures/02_graphe_dag.png) | le graphe du DAG : chargement, contrôle RAW, puis les groupes staging, intermediate et marts |
 | ![](docs/captures/03_controle_en_echec.png) | un contrôle en échec, et les tâches suivantes en `upstream_failed` |
 | ![](docs/captures/04_historique_chargement.png) | l'historique de chargement Snowflake (`COPY_HISTORY`) |
 | ![](docs/captures/05_droits_role.png) | les droits du rôle des outils, et les accès refusés hors de son périmètre |
